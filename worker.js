@@ -1,14 +1,16 @@
-// ── Cloudflare Worker — Exchange API Proxy ───────────────────────
-// Format: Service Worker (addEventListener) — compatible dengan Cloudflare Dashboard UI
-// Tidak perlu wrangler, langsung paste di editor dashboard → Save and Deploy
-//
+// ── Cloudflare Worker — Exchange API Proxy ────────────────────
 // Setup:
 //   1. Paste file ini di Cloudflare Dashboard → Workers → Edit Code → Save and Deploy
-//   2. Workers → Settings → Variables → Add: PROXY_SECRET = (random string 32+ char)
-//   3. Railway Variables → Add:
+//   2. Workers → Settings → Variables → Add:
+//        PROXY_SECRET = (random string 32+ char, SAMA dengan CF_PROXY_SECRET di Railway)
+//   3. Railway Variables → pastikan:
 //        CF_PROXY_URL    = https://NAMA-WORKER.ACCOUNT.workers.dev
-//        CF_PROXY_SECRET = (secret yang sama)
-// ─────────────────────────────────────────────────────────────────
+//        CF_PROXY_SECRET = (secret yang sama dengan PROXY_SECRET di CF Worker)
+//
+// Flow:
+//   Frontend → Railway /api/market → marketDataService.js → CF Worker → Exchange
+//   CF Worker verify x-proxy-secret dari Railway sebelum forward ke exchange
+// ─────────────────────────────────────────────────────────────
 
 const ALLOWED_DOMAINS = [
   'fapi.binance.com',
@@ -41,7 +43,9 @@ async function handleRequest(request) {
     return makeJson({ error: 'Method not allowed' }, 405)
   }
 
-  // Auth
+  // ── Verifikasi secret dari Railway backend ─────────────────
+  // Railway marketDataService.js mengirim header x-proxy-secret
+  // berisi CF_PROXY_SECRET env — harus cocok dengan PROXY_SECRET di sini
   var secret = request.headers.get('x-proxy-secret')
   if (!secret || secret !== PROXY_SECRET) {
     return makeJson({ error: 'Unauthorized' }, 401)
@@ -62,7 +66,7 @@ async function handleRequest(request) {
     return makeJson({ error: 'url (string) required' }, 400)
   }
 
-  // Domain allowlist
+  // Domain allowlist — cegah SSRF (Server-Side Request Forgery)
   var hostname
   try {
     hostname = new URL(url).hostname
