@@ -1,6 +1,6 @@
 name = "key-exchange"
 main = "worker.js"
-compatibility_date = "2026-12-30"
+compatibility_date = "2026-08-04"
 [observability.logs]
 enabled = true
 head_sampling_rate = 1
